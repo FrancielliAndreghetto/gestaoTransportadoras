@@ -36,6 +36,7 @@ $router->post('/entregas',              [EntregaController::class, 'store']);
 $router->get('/entregas/{id}',          [EntregaController::class, 'show']);
 $router->patch('/entregas/{id}/status', [EntregaController::class, 'updateStatus']);
 $router->post('/entregas/{id}/nao-conformidades', [EntregaController::class, 'naoConformidades']);
+$router->get('/entregas/{id}/nao-conformidades',  [EntregaController::class, 'listNaoConformidades']);
 
 // Motivos Nao Conformidade
 $router->get('/motivos-nao-conformidade', [MotivosController::class, 'index']);

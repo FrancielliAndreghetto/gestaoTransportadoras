@@ -338,6 +338,40 @@ class EntregaController
         ]);
     }
 
+    public static function listNaoConformidades(array $params): void
+    {
+        $db = Database::connection();
+
+        $stmt = $db->prepare('SELECT id FROM entregas WHERE id = ?');
+        $stmt->execute([$params['id']]);
+        if (!$stmt->fetch()) {
+            json(['erro' => 'Entrega não encontrada'], 404);
+        }
+
+        $stmt = $db->prepare('
+            SELECT nc.id, nc.id_entrega, nc.id_motivo, nc.descricao, nc.created_at,
+                   m.codigo AS motivo_codigo, m.descricao AS motivo_descricao
+            FROM nao_conformidades nc
+            JOIN motivos_nao_conformidade m ON m.id = nc.id_motivo
+            WHERE nc.id_entrega = ?
+            ORDER BY nc.created_at ASC
+        ');
+        $stmt->execute([$params['id']]);
+        $rows = $stmt->fetchAll();
+
+        json(array_map(fn($row) => [
+            'id'         => (int) $row['id'],
+            'id_entrega' => (int) $row['id_entrega'],
+            'id_motivo'  => (int) $row['id_motivo'],
+            'descricao'  => $row['descricao'],
+            'created_at' => $row['created_at'],
+            'motivo'     => [
+                'codigo'    => $row['motivo_codigo'],
+                'descricao' => $row['motivo_descricao'],
+            ],
+        ], $rows));
+    }
+
     public static function naoConformidades(array $params): void
     {
         $data = body();
