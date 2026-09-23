@@ -1,192 +1,268 @@
-# Teste Técnico — Desenvolvedor PHP Júnior
+# Gestão de Transportadoras
 
-## Contexto
+API de um TMS em PHP 8.1. Este repositório parte do starter do teste e entrega o bugfix, o fluxo de não conformidades e os bônus.
 
-Você acabou de entrar no time de desenvolvimento de um TMS (Transportation Management System). No seu primeiro dia, chegou um bug reportado pelo time de operações e uma nova funcionalidade para implementar.
-
-Seu trabalho: **corrigir o bug e entregar a feature**.
+**Stack:** PHP 8.1+ · PDO · MySQL 8 · [Phinx](https://phinx.org) · PHPUnit · Docker
 
 ---
 
-## Prazo
+## O que foi feito
 
-**5 dias corridos** a partir do recebimento deste desafio.
-
----
-
-## Stack
-
-PHP 8.1+ · PDO · MySQL 8+ · [Phinx](https://phinx.org) (migrations e seeds)
+- Correção do `POST /entregas` que aceitava transportadora desativada — detalhes em [BUGFIX.md](./BUGFIX.md)
+- Tabelas `motivos_nao_conformidade` e `nao_conformidades` (FKs, unique em `codigo`, `ativo` com default 1)
+- Seeder dos 6 motivos
+- `GET /motivos-nao-conformidade` e `POST /entregas/{id}/nao-conformidades`
+- Bônus: rastreamento público, listagem de NCs, Docker Compose e testes automatizados
 
 ---
 
 ## Como rodar
 
+### Local
+
+Requisitos: PHP 8.1+, Composer, MySQL 8.
+
 ```bash
-# 1. Configure o ambiente
 cp .env.example .env
-# edite .env com suas credenciais MySQL
+# edite DB_HOST, DB_NAME, DB_USER e DB_PASS
 
-# 2. Instale as dependências
 composer install
-
-# 3. Crie as tabelas
 vendor/bin/phinx migrate
-
-# 4. Popule os dados iniciais
 vendor/bin/phinx seed:run
-
-# 5. Suba o servidor
 php -S localhost:8000 public/index.php
 ```
 
+API em http://localhost:8000
+
+No Windows o Phinx é `vendor\bin\phinx`. Os `curl` abaixo funcionam no PowerShell com `curl.exe`.
+
 ### Docker
+
+Não precisa de `.env` local. O Compose define `DB_HOST=db` e sobe MySQL interno.
 
 ```bash
 docker compose up --build
 ```
 
-API em http://localhost:8000 — migrate e seed rodam sozinhos na primeira subida.
+Na primeira subida: migrate + seed. API em http://localhost:8000
+
+```bash
+docker compose down          # para os containers (mantém o volume do MySQL)
+docker compose down -v       # também apaga o banco
+```
+
+### Testes
+
+Banco já migrado e populado; o `.env` precisa apontar para ele.
+
+```bash
+composer test
+```
+
+Os testes de feature abrem transação e dão rollback — não deixam dado de teste no banco.
 
 ---
 
-## Sistema atual
+## Dados de seed
 
-Endpoints disponíveis:
+| Recurso | IDs úteis |
+|---|---|
+| Transportadoras ativas | `1`, `2` |
+| Transportadora inativa | `3` (Logística Norte Ltda) |
+| Remetentes | `1`, `2` |
+| Destinatários | `1`, `2`, `3` |
+| Entregas | `1` `BRD-2024-00001` (EM_TRANSITO) · `2` `BRD-2024-00002` (CRIADA) · `3` `BRD-2024-00003` (ENTREGUE) |
+| Motivos de NC | `1`–`6` (`AVARIA_PRODUTO`, `NAO_ENTREGUE`, `ENDERECO_INCORRETO`, `RECUSADO`, `EXTRAVIO`, `OUTROS`) |
 
-```
-GET   /transportadoras
-POST  /transportadoras
-GET   /transportadoras/{id}
-PATCH /transportadoras/{id}/desativar
-PATCH /transportadoras/{id}/reativar
+Fluxo de status:
 
-GET   /entregas
-POST  /entregas
-GET   /entregas/{id}
-PATCH /entregas/{id}/status
-```
-
-Dados de seed disponíveis (use os IDs para testar):
-- 3 transportadoras (2 ativas, 1 inativa)
-- 2 remetentes
-- 3 destinatários
-- 3 entregas em status variados com histórico de ocorrências
-
-**Fluxo de status:**
 ```
 CRIADA → COLETADA → EM_TRANSITO → SAIU_ENTREGA → ENTREGUE
                                                ↘ DEVOLVIDA
 ```
-Transições inválidas devem retornar `422`.
 
 ---
 
-## Suas tarefas
-
-### Tarefa 1 — Corrigir o bug
-
-Leia o arquivo [`BUG_REPORT.md`](./BUG_REPORT.md), reproduza o problema, corrija e preencha o [`BUGFIX.md`](./BUGFIX.md).
-
-### Tarefa 2 — Não conformidades
-
-O time de operações precisa registrar ocorrências de entregas com problema (avaria, recusa, endereço errado, etc.).
-
-**Crie as migrations:**
+## Endpoints
 
 ```
-motivos_nao_conformidade
-  id        INT UNSIGNED PK AUTO_INCREMENT
-  codigo    VARCHAR(30) UNIQUE NOT NULL
-  descricao VARCHAR(150) NOT NULL
-  ativo     TINYINT(1) NOT NULL DEFAULT 1
+GET    /transportadoras
+POST   /transportadoras
+GET    /transportadoras/{id}
+PATCH  /transportadoras/{id}/desativar
+PATCH  /transportadoras/{id}/reativar
 
-nao_conformidades
-  id         INT UNSIGNED PK AUTO_INCREMENT
-  id_entrega INT UNSIGNED NOT NULL  →  FK entregas.id
-  id_motivo  INT UNSIGNED NOT NULL  →  FK motivos_nao_conformidade.id
-  descricao  VARCHAR(500) NULL
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+GET    /entregas
+POST   /entregas
+GET    /entregas/{id}
+PATCH  /entregas/{id}/status
+
+GET    /motivos-nao-conformidade
+POST   /entregas/{id}/nao-conformidades
+GET    /entregas/{id}/nao-conformidades
+
+GET    /rastreamento/{codigo}
 ```
 
-**Crie o seeder `MotivosNaoConformidadeSeeder.php`** com:
+### Status HTTP
 
-| codigo | descricao |
-|--------|-----------|
-| `AVARIA_PRODUTO` | Produto com avaria ou dano |
-| `NAO_ENTREGUE` | Destinatário ausente |
-| `ENDERECO_INCORRETO` | Endereço incorreto ou não localizado |
-| `RECUSADO` | Recusado pelo destinatário |
-| `EXTRAVIO` | Produto extraviado |
-| `OUTROS` | Outros motivos |
+| Código | Quando |
+|---|---|
+| `200` | Listagem ou consulta ok |
+| `201` | Recurso criado |
+| `404` | Entrega, motivo ou rota não existe |
+| `422` | Validação: campo obrigatório, transportadora inativa, transição de status inválida |
 
-**Implemente os endpoints:**
+---
 
-```
-GET  /motivos-nao-conformidade
-     → retorna lista dos motivos com ativo = 1
+## Exemplos de requisição
 
-POST /entregas/{id}/nao-conformidades
-     body: { "id_motivo": 1, "descricao": "..." }
-     → registra a não conformidade
-     → id_motivo obrigatório; entrega e motivo devem existir
+Base: `http://localhost:8000`
+
+### Listar motivos ativos
+
+```bash
+curl.exe http://localhost:8000/motivos-nao-conformidade
 ```
 
----
+`200` — só motivos com `ativo = 1`:
 
-## Commits esperados
-
-Queremos ver o raciocínio em etapas — não um único commit com tudo.
-
-```
-fix:   correção do bug
-feat:  migration motivos_nao_conformidade
-feat:  migration nao_conformidades
-feat:  seeder MotivosNaoConformidadeSeeder
-feat:  GET /motivos-nao-conformidade
-feat:  POST /entregas/{id}/nao-conformidades
-docs:  BUGFIX.md preenchido
+```json
+[
+  {
+    "id": 1,
+    "codigo": "AVARIA_PRODUTO",
+    "descricao": "Produto com avaria ou dano",
+    "ativo": true
+  }
+]
 ```
 
+### Registrar não conformidade
+
+`id_motivo` é obrigatório. Entrega e motivo precisam existir. `descricao` é opcional (observação da ocorrência — **não** precisa ser igual à descrição do motivo).
+
+```bash
+curl.exe -X POST http://localhost:8000/entregas/1/nao-conformidades -H "Content-Type: application/json" -d "{\"id_motivo\": 1, \"descricao\": \"Caixa amassada na coleta\"}"
+```
+
+`201`:
+
+```json
+{
+  "id": 1,
+  "id_entrega": 1,
+  "id_motivo": 1,
+  "descricao": "Caixa amassada na coleta",
+  "created_at": "2026-09-23 02:03:12"
+}
+```
+
+Erros: `422` sem `id_motivo` · `404` se a entrega ou o motivo não existirem.
+
+### Listar NCs de uma entrega
+
+```bash
+curl.exe http://localhost:8000/entregas/1/nao-conformidades
+```
+
+```json
+[
+  {
+    "id": 1,
+    "id_entrega": 1,
+    "id_motivo": 1,
+    "descricao": "Caixa amassada na coleta",
+    "created_at": "2026-09-23 02:03:12",
+    "motivo": {
+      "codigo": "AVARIA_PRODUTO",
+      "descricao": "Produto com avaria ou dano"
+    }
+  }
+]
+```
+
+### Rastreamento público
+
+```bash
+curl.exe http://localhost:8000/rastreamento/BRD-2024-00001
+```
+
+```json
+{
+  "codigo": "BRD-2024-00001",
+  "status": "EM_TRANSITO",
+  "data_prazo": "2024-12-20",
+  "transportadora": "Transportes Rápido Ltda",
+  "destinatario": {
+    "nome": "João da Silva",
+    "cidade": "Porto Alegre",
+    "uf": "RS"
+  },
+  "rastreamento": [
+    {
+      "status": "CRIADA",
+      "descricao": "Entrega cadastrada no sistema",
+      "cidade": "São Paulo",
+      "uf": "SP",
+      "data": "2026-09-22 03:14:08"
+    }
+  ]
+}
+```
+
+Código inexistente → `404`.
+
+### Criar entrega (transportadora ativa)
+
+```bash
+curl.exe -X POST http://localhost:8000/entregas -H "Content-Type: application/json" -d "{\"id_transportadora\": 1, \"id_remetente\": 1, \"id_destinatario\": 1, \"data_prazo\": \"2026-12-31\", \"peso_kg\": 10.5, \"volumes\": 2}"
+```
+
+`201` com os dados da entrega.
+
+### Transportadora inativa (bug corrigido)
+
+A transportadora `3` está desativada. O cadastro é recusado:
+
+```bash
+curl.exe -X POST http://localhost:8000/entregas -H "Content-Type: application/json" -d "{\"id_transportadora\": 3, \"id_remetente\": 1, \"id_destinatario\": 1, \"data_prazo\": \"2026-12-31\", \"peso_kg\": 10.5, \"volumes\": 2}"
+```
+
+`422`: `{"erro": "Transportadora está inativa"}`
+
+Passo a passo da correção e texto para o time de operações: [BUGFIX.md](./BUGFIX.md).
+
+### Avançar status
+
+A entrega `2` está `CRIADA`. Próximo status válido: `COLETADA`.
+
+```bash
+curl.exe -X PATCH http://localhost:8000/entregas/2/status -H "Content-Type: application/json" -d "{\"status\": \"COLETADA\", \"descricao\": \"Carga coletada\", \"cidade\": \"Sao Paulo\", \"uf\": \"SP\"}"
+```
+
+`CRIADA` → `ENTREGUE` (pulo) retorna `422`.
+
 ---
 
-## Bônus
+## Decisões técnicas
 
-- `GET /rastreamento/{codigo}` — rastreamento público pelo código da entrega (ex: `BRD-2024-00001`)
-- `GET /entregas/{id}/nao-conformidades` — listar NCs de uma entrega
-- Docker + docker-compose funcional
-- Testes automatizados
+**Duas `descricao`.** Em `motivos_nao_conformidade` é o texto fixo do catálogo (`VARCHAR(150)`). Em `nao_conformidades` é observação livre daquela ocorrência (`VARCHAR(500)`, opcional). O vínculo é só o `id_motivo`.
 
----
+**Migrations.** `codigo` tem `UNIQUE KEY` (sem índice extra). `nao_conformidades` tem FK para `entregas.id` e `motivos_nao_conformidade.id`.
 
-## Critérios de avaliação
+**Rastreamento público.** `GET /rastreamento/{codigo}` devolve status, prazo, transportadora, destinatário e histórico. Não expõe id interno, remetente, peso nem volumes.
 
-| O que avaliamos | Peso |
-|-----------------|------|
-| Identificação e correção do bug | Alto |
-| BUGFIX.md — clareza técnica + resposta para o time | Alto |
-| Migrations corretas (FKs, índices, tipos) | Alto |
-| Endpoints de não conformidade funcionando | Alto |
-| Qualidade de código e organização | Médio |
-| Tratamento de erro e HTTP status codes | Médio |
-| Granularidade dos commits | Médio |
+**Lista de NCs.** O GET inclui o motivo (`codigo` e `descricao`) para não exigir uma segunda chamada.
+
+**Config de banco.** `config/database.php` lê primeiro variáveis de ambiente e depois o `.env`. No Docker o host é o serviço `db`.
+
+**Docker.** A porta 3306 do MySQL não é publicada no host (evita conflito com MySQL local). Seed só roda se `transportadoras` estiver vazia.
+
+**Testes.** PHPUnit 10. `json()` / `body()` e `registerRoutes()` foram extraídos para o teste despachar o router em processo. Em `TESTING`, `json()` lança `JsonResponseException` no lugar de `exit`.
 
 ---
 
-## Entrega
+## Autora
 
-1. Suba em repositório **público** no GitHub (sem BRUDAM no nome)
-2. README do seu projeto com: como rodar, exemplos de requisição, decisões técnicas
-3. Envie ao recrutador: nome completo · link do repo · LinkedIn
-
----
-
-## Dúvidas
-
-Se algo estiver ambíguo, documente sua interpretação e siga. Decisão sob incerteza também é avaliada.
-
----
-
-## Autor
-
-**Michel Mileski** — [@eusouomichel](https://github.com/eusouomichel)
+Francielli Andreghetto — [GitHub](https://github.com/FrancielliAndreghetto)
