@@ -40,6 +40,14 @@ vendor/bin/phinx seed:run
 php -S localhost:8000 public/index.php
 ```
 
+### Docker
+
+```bash
+docker compose up --build
+```
+
+API em http://localhost:8000 — migrate e seed rodam sozinhos na primeira subida.
+
 ---
 
 ## Sistema atual

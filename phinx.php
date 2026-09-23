@@ -1,7 +1,6 @@
 <?php
 
-$envFile = __DIR__ . '/.env';
-$env     = file_exists($envFile) ? parse_ini_file($envFile) : [];
+$config = require __DIR__ . '/config/database.php';
 
 return [
     'paths' => [
@@ -13,11 +12,11 @@ return [
         'default_environment'     => 'development',
         'development' => [
             'adapter' => 'mysql',
-            'host'    => $env['DB_HOST'] ?? 'localhost',
-            'name'    => $env['DB_NAME'] ?? 'brudam_test',
-            'user'    => $env['DB_USER'] ?? 'root',
-            'pass'    => $env['DB_PASS'] ?? '',
-            'port'    => (int) ($env['DB_PORT'] ?? 3306),
+            'host'    => $config['host'],
+            'name'    => $config['name'],
+            'user'    => $config['user'],
+            'pass'    => $config['pass'],
+            'port'    => (int) $config['port'],
             'charset' => 'utf8mb4',
         ],
     ],
