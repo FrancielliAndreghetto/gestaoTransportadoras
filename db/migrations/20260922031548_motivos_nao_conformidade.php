@@ -9,7 +9,7 @@ final class MotivosNaoConformidade extends AbstractMigration
     public function up(): void
     {
         $this->execute("
-            CREATE TABLE motivos__nao_conformidade (
+            CREATE TABLE motivos_nao_conformidade (
                 id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 codigo    VARCHAR(30) NOT NULL,
                 descricao VARCHAR(150) NOT NULL,
@@ -21,6 +21,6 @@ final class MotivosNaoConformidade extends AbstractMigration
 
     public function down(): void
     {
-        $this->execute('DROP TABLE IF EXISTS motivos__nao_conformidade');
+        $this->execute('DROP TABLE IF EXISTS motivos_nao_conformidade');
     }
 }

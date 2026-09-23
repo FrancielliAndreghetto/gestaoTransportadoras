@@ -8,7 +8,7 @@ class MotivosNaoConformidadeSeeder extends AbstractSeed
 {
     public function run(): void
     {
-        $this->table('motivos__nao_conformidade')->insert([
+        $this->table('motivos_nao_conformidade')->insert([
             ['id' => 1, 'codigo' => 'AVARIA_PRODUTO', 'descricao' => 'Produto com avaria ou dano'],
             ['id' => 2, 'codigo' => 'NAO_ENTREGUE', 'descricao' => 'Destinatário ausente'],
             ['id' => 3, 'codigo' => 'ENDERECO_INCORRETO', 'descricao' => 'Endereço incorreto ou não localizado'],
