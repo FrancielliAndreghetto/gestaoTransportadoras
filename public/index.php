@@ -40,4 +40,7 @@ $router->post('/entregas/{id}/nao-conformidades', [EntregaController::class, 'na
 // Motivos Nao Conformidade
 $router->get('/motivos-nao-conformidade', [MotivosController::class, 'index']);
 
+// Rastreamento público
+$router->get('/rastreamento/{codigo}', [EntregaController::class, 'rastreamento']);
+
 $router->dispatch();

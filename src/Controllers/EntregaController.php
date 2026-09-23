@@ -288,6 +288,56 @@ class EntregaController
         ];
     }
 
+    public static function rastreamento(array $params): void
+    {
+        $db     = Database::connection();
+        $codigo = strtoupper(trim($params['codigo'] ?? ''));
+
+        $stmt = $db->prepare('
+            SELECT e.id, e.codigo, e.status, e.data_prazo,
+                   t.nome_fantasia AS transportadora_nome,
+                   d.nome AS destinatario_nome, d.cidade, d.uf
+            FROM entregas e
+            JOIN transportadoras t ON t.id = e.id_transportadora
+            JOIN destinatarios   d ON d.id = e.id_destinatario
+            WHERE e.codigo = ?
+        ');
+        $stmt->execute([$codigo]);
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            json(['erro' => 'Entrega não encontrada'], 404);
+        }
+
+        $stmt = $db->prepare('
+            SELECT status, descricao, cidade, uf, created_at
+            FROM ocorrencias
+            WHERE id_entrega = ?
+            ORDER BY created_at ASC
+        ');
+        $stmt->execute([$row['id']]);
+        $ocorrencias = $stmt->fetchAll();
+
+        json([
+            'codigo'         => $row['codigo'],
+            'status'         => $row['status'],
+            'data_prazo'     => $row['data_prazo'],
+            'transportadora' => $row['transportadora_nome'],
+            'destinatario'   => [
+                'nome'   => $row['destinatario_nome'],
+                'cidade' => $row['cidade'],
+                'uf'     => $row['uf'],
+            ],
+            'rastreamento' => array_map(fn($o) => [
+                'status'    => $o['status'],
+                'descricao' => $o['descricao'],
+                'cidade'    => $o['cidade'],
+                'uf'        => $o['uf'],
+                'data'      => $o['created_at'],
+            ], $ocorrencias),
+        ]);
+    }
+
     public static function naoConformidades(array $params): void
     {
         $data = body();
