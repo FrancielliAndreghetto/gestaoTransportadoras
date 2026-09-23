@@ -41,25 +41,38 @@ No Windows o Phinx é `vendor\bin\phinx`. Os `curl` abaixo funcionam no PowerShe
 Não precisa de `.env` local. O Compose define `DB_HOST=db` e sobe MySQL interno.
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
+
+`-d` sobe em segundo plano e devolve o terminal. Sem isso, o `up` fica preso nos logs do PHP.
 
 Na primeira subida: migrate + seed. API em http://localhost:8000
 
 ```bash
+docker compose logs -f app   # acompanhar logs
 docker compose down          # para os containers (mantém o volume do MySQL)
 docker compose down -v       # também apaga o banco
 ```
 
+O MySQL do Docker **não** fica em `localhost:3306`. Ele só existe na rede interna (`db`). Por isso `composer test` no seu terminal não enxerga esse banco.
+
 ### Testes
 
-Banco já migrado e populado; o `.env` precisa apontar para ele.
+**Com Docker** (Compose já no ar):
+
+```bash
+docker compose exec app composer test
+```
+
+Roda o PHPUnit **dentro** do container, onde o host do banco é `db`.
+
+**Sem Docker** (MySQL local + migrate e seed + `.env` apontando para ele):
 
 ```bash
 composer test
 ```
 
-Os testes de feature abrem transação e dão rollback — não deixam dado de teste no banco.
+Os testes de feature abrem transação e dão rollback — não deixam dado de teste no banco. Sem MySQL acessível, os 9 testes de feature são pulados (`Skipped`); os de router continuam passando.
 
 ---
 
