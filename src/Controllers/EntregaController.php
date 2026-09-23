@@ -287,4 +287,47 @@ class EntregaController
             ], $ocorrencias),
         ];
     }
+
+    public static function naoConformidades(array $params): void
+    {
+        $data = body();
+        $db   = Database::connection();
+
+        if (empty($data['id_motivo'])) {
+            json(['erro' => 'Campo obrigatório: id_motivo'], 422);
+        }
+
+        $stmt = $db->prepare('SELECT id FROM entregas WHERE id = ?');
+        $stmt->execute([$params['id']]);
+        if (!$stmt->fetch()) {
+            json(['erro' => 'Entrega não encontrada'], 404);
+        }
+
+        $stmt = $db->prepare('SELECT id FROM motivos_nao_conformidade WHERE id = ?');
+        $stmt->execute([$data['id_motivo']]);
+        if (!$stmt->fetch()) {
+            json(['erro' => 'Motivo não encontrado'], 404);
+        }
+
+        $descricao = trim((string) ($data['descricao'] ?? ''));
+        $descricao = $descricao === '' ? null : $descricao;
+
+        $stmt = $db->prepare('
+            INSERT INTO nao_conformidades (id_entrega, id_motivo, descricao)
+            VALUES (?, ?, ?)
+        ');
+        $stmt->execute([(int) $params['id'], (int) $data['id_motivo'], $descricao]);
+
+        $stmt = $db->prepare('SELECT * FROM nao_conformidades WHERE id = ?');
+        $stmt->execute([$db->lastInsertId()]);
+        $row = $stmt->fetch();
+
+        json([
+            'id'         => (int) $row['id'],
+            'id_entrega' => (int) $row['id_entrega'],
+            'id_motivo'  => (int) $row['id_motivo'],
+            'descricao'  => $row['descricao'],
+            'created_at' => $row['created_at'],
+        ], 201);
+    }
 }
